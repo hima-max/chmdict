@@ -10,6 +10,8 @@
 
 * make all  
 辞書の生成
+* make all OPT=--only_ch
+中国語の読み方のみの辞書の生成
 * make clean  
 辞書の削除
 

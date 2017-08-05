@@ -34,6 +34,12 @@ class DictMaker(object, metaclass=abc.ABCMeta):
         """
         pass
 
+    @abc.abstractmethod
+    def print_only_ch_dict(self):
+        """ 中国語の読み方のみのIME辞書文字列の出力を行う抽象メソッド
+        """
+        pass
+
 class MSDictMaker(DictMaker):
     """ MS-IME用辞書生成クラス
     """
@@ -43,6 +49,11 @@ class MSDictMaker(DictMaker):
         sys.stdout.buffer.write(b'\xFF\xFE') # UTF-16 Little Endian を示すBOM(Byte Order Mark)を付与
         reading_lists = [self.reading_list, self.japanese_reading_list]
         self.__print_reading_lists(reading_lists)
+
+    def print_only_ch_dict(self):
+        """ 中国語の読み方のみの辞書文字列の出力
+        """
+        self.__print_reading_lists([self.reading_list])
 
     def __print_reading_lists(self, reading_lists):
         """ 読み方の出力
@@ -73,6 +84,11 @@ class MozcDictMaker(DictMaker):
         """
         reading_lists = [self.reading_list, self.japanese_reading_list]
         self.__print_reading_lists(reading_lists)
+
+    def print_only_ch_dict(self):
+        """ 中国語の読み方のみの辞書文字列の出力
+        """
+        self.__print_reading_lists([self.reading_list])
 
     def __print_reading_lists(self, reading_lists):
         """ 読み方の出力
@@ -181,6 +197,8 @@ reading, japanese_readingに複数の読み方を指定できます（例：「�
             help='Google日本語入力向けの辞書を出力（IMEの指定は必須、他のIME指定とは排他）')
         optengine.add_argument('--ms', '-m', action='store_true', \
             help='Microsoft IME向けの辞書を出力（IMEの指定は必須、他のIME指定とは排他）')
+        optparser.add_argument('--only_ch', action='store_true', \
+            help='中国語の読み方のみの辞書を出力')
         self.opts = optparser.parse_args()
         if self.opts.mozc is not True and self.opts.ms is not True:
             print(f"Error: どのIME向けの辞書を出力するか指定してください", file=sys.stderr)
@@ -201,6 +219,11 @@ reading, japanese_readingに複数の読み方を指定できます（例：「�
         if self.opts.ms is True:
             return "ms"
 
+    def is_only_chinese(self):
+        """ 中国語の読み方のみかを返す
+        """
+        return self.opts.only_ch
+
 if __name__ == '__main__':
     if int(platform.python_version_tuple()[0]) < 3 or int(platform.python_version_tuple()[1]) < 6:
         raise Exception("Python 3.6 or more is required.")
@@ -210,4 +233,7 @@ if __name__ == '__main__':
         word_info = WordInfoContainer(json_file)
         word_dict = ChosenDict(word_info.word_list, word_info.reading_list, \
             word_info.japanese_reading_list, word_info.word_class, word_info.explanation)
-        word_dict.print_dict()
+        if OPTS.is_only_chinese():
+            word_dict.print_only_ch_dict()
+        else:
+            word_dict.print_dict()
