@@ -35,8 +35,8 @@ class DictMaker(object, metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def print_only_ch_dict(self):
-        """ 中国語の読み方のみのIME辞書文字列の出力を行う抽象メソッド
+    def print_dict_without_ja(self):
+        """ 日本語の読み方がないIME辞書文字列の出力を行う抽象メソッド
         """
         pass
 
@@ -47,34 +47,26 @@ class MSDictMaker(DictMaker):
         """ 辞書文字列の出力
         """
         sys.stdout.buffer.write(b'\xFF\xFE') # UTF-16 Little Endian を示すBOM(Byte Order Mark)を付与
-        reading_lists = [self.reading_list, self.japanese_reading_list]
-        self.__print_reading_lists(reading_lists)
+        reading_list = self.reading_list + self.japanese_reading_list
+        self.__print_reading_list(reading_list)
 
-    def print_only_ch_dict(self):
-        """ 中国語の読み方のみの辞書文字列の出力
+    def print_dict_without_ja(self):
+        """ 日本語の読み方がない辞書文字列の出力
         """
-        self.__print_reading_lists([self.reading_list])
+        self.__print_reading_list(self.reading_list)
 
-    def __print_reading_lists(self, reading_lists):
+    def __print_reading_list(self, reading_list):
         """ 読み方の出力
-        reading_lists: 読み方が含まれるリストのリスト
-        """
-        for word in self.word_list:
-            for reading_list in reading_lists:
-                self.__print_reading_list(word, reading_list)
-
-    def __print_reading_list(self, word, reading_list):
-        """ 読み方の出力
-        word_list: 単語が含まれるリスト
         reading_list: 読み方が含まれるリスト
         """
-        for reading in reading_list:
-            output = "\t".join([reading, word, self.word_class])
-            if self.explanation != None:
-                output = output + "\t" + self.explanation + "\n"
-            else:
-                output = output + "\n"
-            sys.stdout.buffer.write(output.encode('utf-16-le'))
+        for word in self.word_list:
+            for reading in reading_list:
+                output = "\t".join([reading, word, self.word_class])
+                if self.explanation != None:
+                    output = output + "\t" + self.explanation + "\n"
+                else:
+                    output = output + "\n"
+                sys.stdout.buffer.write(output.encode('utf-16-le'))
 
 class MozcDictMaker(DictMaker):
     """ Mozc用辞書生成クラス
@@ -82,32 +74,24 @@ class MozcDictMaker(DictMaker):
     def print_dict(self):
         """ 辞書文字列の出力
         """
-        reading_lists = [self.reading_list, self.japanese_reading_list]
-        self.__print_reading_lists(reading_lists)
+        reading_list = self.reading_list + self.japanese_reading_list
+        self.__print_reading_list(reading_list)
 
-    def print_only_ch_dict(self):
-        """ 中国語の読み方のみの辞書文字列の出力
+    def print_dict_without_ja(self):
+        """ 日本語の読み方がない辞書文字列の出力
         """
-        self.__print_reading_lists([self.reading_list])
+        self.__print_reading_list(self.reading_list)
 
-    def __print_reading_lists(self, reading_lists):
+    def __print_reading_list(self, reading_list):
         """ 読み方の出力
-        reading_lists: 読み方が含まれるリストのリスト
-        """
-        for word in self.word_list:
-            for reading_list in reading_lists:
-                self.__print_reading_list(word, reading_list)
-
-    def __print_reading_list(self, word, reading_list):
-        """ 読み方の出力
-        word_list: 単語が含まれるリスト
         reading_list: 読み方が含まれるリスト
         """
-        for reading in reading_list:
-            output = "\t".join([reading, word, self.word_class])
-            if self.explanation != None:
-                output = output + "\t" + self.explanation
-            print(output)
+        for word in self.word_list:
+            for reading in reading_list:
+                output = "\t".join([reading, word, self.word_class])
+                if self.explanation != None:
+                    output = output + "\t" + self.explanation
+                print(output)
 
 class WordInfoContainer:
     """ 単語情報クラス
@@ -197,8 +181,8 @@ reading, japanese_readingに複数の読み方を指定できます（例：「�
             help='Google日本語入力向けの辞書を出力（IMEの指定は必須、他のIME指定とは排他）')
         optengine.add_argument('--ms', '-m', action='store_true', \
             help='Microsoft IME向けの辞書を出力（IMEの指定は必須、他のIME指定とは排他）')
-        optparser.add_argument('--only_ch', action='store_true', \
-            help='中国語の読み方のみの辞書を出力')
+        optparser.add_argument('--without-japanese', '-wj', action='store_true', \
+            help='日本語の読み方がない辞書を出力')
         self.opts = optparser.parse_args()
         if self.opts.mozc is not True and self.opts.ms is not True:
             print(f"Error: どのIME向けの辞書を出力するか指定してください", file=sys.stderr)
@@ -219,10 +203,10 @@ reading, japanese_readingに複数の読み方を指定できます（例：「�
         if self.opts.ms is True:
             return "ms"
 
-    def is_only_chinese(self):
-        """ 中国語の読み方のみかを返す
+    def is_without_ja(self):
+        """ 日本語の読み方がないかを返す
         """
-        return self.opts.only_ch
+        return self.opts.without_japanese
 
 if __name__ == '__main__':
     if int(platform.python_version_tuple()[0]) < 3 or int(platform.python_version_tuple()[1]) < 6:
@@ -233,7 +217,7 @@ if __name__ == '__main__':
         word_info = WordInfoContainer(json_file)
         word_dict = ChosenDict(word_info.word_list, word_info.reading_list, \
             word_info.japanese_reading_list, word_info.word_class, word_info.explanation)
-        if OPTS.is_only_chinese():
-            word_dict.print_only_ch_dict()
+        if OPTS.is_without_ja():
+            word_dict.print_dict_without_ja()
         else:
             word_dict.print_dict()
