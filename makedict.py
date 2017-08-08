@@ -14,21 +14,29 @@ import platform
 class DictMaker(object, metaclass=abc.ABCMeta):
     """ IME辞書生成を行う抽象クラス
     """
-    def __init__(self, word_list, reading_list, word_class, explanation):
+    def __init__(self, word_list, reading_list, japanese_reading_list, word_class, explanation):
         """ コンストラクタ
         word_list: 単語が含まれるリスト（同じ読み方、意味で複数の書き方が出来るケースを想定）
         reading_list: 読み方が含まれるリスト（同じ単語、意味で複数の読み方が出来るケースを想定）
+        japanese_reading_list: 日本語の読み方が含まれるリスト（同じ単語、意味で複数の読み方が出来るケースを想定）
         word_class: 品詞
         explanation: 説明文（任意、無い場合はNoneが来るものと想定する）
         """
         self.word_list = word_list
         self.reading_list = reading_list
+        self.japanese_reading_list = japanese_reading_list
         self.word_class = word_class
         self.explanation = explanation
 
     @abc.abstractmethod
     def print_dict(self):
         """ IME辞書文字列の出力を行う抽象メソッド
+        """
+        pass
+
+    @abc.abstractmethod
+    def print_dict_without_ja(self):
+        """ 日本語の読み方がないIME辞書文字列の出力を行う抽象メソッド
         """
         pass
 
@@ -39,8 +47,20 @@ class MSDictMaker(DictMaker):
         """ 辞書文字列の出力
         """
         sys.stdout.buffer.write(b'\xFF\xFE') # UTF-16 Little Endian を示すBOM(Byte Order Mark)を付与
+        reading_list = self.reading_list + self.japanese_reading_list
+        self.__print_reading_list(reading_list)
+
+    def print_dict_without_ja(self):
+        """ 日本語の読み方がない辞書文字列の出力
+        """
+        self.__print_reading_list(self.reading_list)
+
+    def __print_reading_list(self, reading_list):
+        """ 読み方の出力
+        reading_list: 読み方が含まれるリスト
+        """
         for word in self.word_list:
-            for reading in self.reading_list:
+            for reading in reading_list:
                 output = "\t".join([reading, word, self.word_class])
                 if self.explanation != None:
                     output = output + "\t" + self.explanation + "\n"
@@ -54,8 +74,20 @@ class MozcDictMaker(DictMaker):
     def print_dict(self):
         """ 辞書文字列の出力
         """
+        reading_list = self.reading_list + self.japanese_reading_list
+        self.__print_reading_list(reading_list)
+
+    def print_dict_without_ja(self):
+        """ 日本語の読み方がない辞書文字列の出力
+        """
+        self.__print_reading_list(self.reading_list)
+
+    def __print_reading_list(self, reading_list):
+        """ 読み方の出力
+        reading_list: 読み方が含まれるリスト
+        """
         for word in self.word_list:
-            for reading in self.reading_list:
+            for reading in reading_list:
                 output = "\t".join([reading, word, self.word_class])
                 if self.explanation != None:
                     output = output + "\t" + self.explanation
@@ -71,6 +103,7 @@ class WordInfoContainer:
         受け取るJSONには以下のkeyが含まれていること
         word: 単語。必須key。valueは文字列または文字列配列であること。
         reading: 読み方。必須key。valueは文字列または文字列配列であること。
+        japanese_reading: 日本語の読み方。必須key。valueは文字列または文字列配列であること。
         class: 品詞。必須key。valueは文字列であること。
         explanation: 説明。任意key。valueは文字列であること。
         """
@@ -93,6 +126,14 @@ class WordInfoContainer:
                 self.reading_list = all_json_info["reading"]
             else: # "word"に対応するvalueが文字列またはリストでない場合はexceptで拾われない例外を起こしてスクリプトを停止させる
                 raise Exception(f"The value of \"reading\" must be \
+                    string or list in {json_file_path}")
+            # 日本語の読みの抽出
+            if isinstance(all_json_info["japanese_reading"], str):
+                self.japanese_reading_list = [all_json_info["japanese_reading"],]
+            elif isinstance(all_json_info["japanese_reading"], list):
+                self.japanese_reading_list = all_json_info["japanese_reading"]
+            else: # "word"に対応するvalueが文字列またはリストでない場合はexceptで拾われない例外を起こしてスクリプトを停止させる
+                raise Exception(f"The value of \"japanese_reading\" must be \
                     string or list in {json_file_path}")
             # 品詞の抽出
             if isinstance(all_json_info["class"], str):
@@ -125,12 +166,13 @@ class OptHandler:
 {
     "word": ["単語1","単語2", ...],
     "reading": ["読み方1","読み方2", ...],
+    "japanese_reading": ["読み方1","読み方2", ...],
     "class": "品詞",
     "explanation": "説明文"
 }
 ----------------------------------------------------------------
 wordに複数の書き方を指定できます（例：「灯明」と「燈明」、ともに読みは「とうみょう」）
-readingに複数の読み方を指定できます（例：「しじょう」と「いちば」、ともに漢字は「市場」）
+reading, japanese_readingに複数の読み方を指定できます（例：「しじょう」と「いちば」、ともに漢字は「市場」）
 ''')
         optparser.add_argument('SOURCE_JSON', action='store', \
             nargs='+', type=str, default=None, help='入力するJSONファイル')
@@ -139,6 +181,8 @@ readingに複数の読み方を指定できます（例：「しじょう」と�
             help='Google日本語入力向けの辞書を出力（IMEの指定は必須、他のIME指定とは排他）')
         optengine.add_argument('--ms', '-m', action='store_true', \
             help='Microsoft IME向けの辞書を出力（IMEの指定は必須、他のIME指定とは排他）')
+        optparser.add_argument('--without-japanese', '-wj', action='store_true', \
+            help='日本語の読み方がない辞書を出力')
         self.opts = optparser.parse_args()
         if self.opts.mozc is not True and self.opts.ms is not True:
             print(f"Error: どのIME向けの辞書を出力するか指定してください", file=sys.stderr)
@@ -159,6 +203,11 @@ readingに複数の読み方を指定できます（例：「しじょう」と�
         if self.opts.ms is True:
             return "ms"
 
+    def is_without_ja(self):
+        """ 日本語の読み方がないかを返す
+        """
+        return self.opts.without_japanese
+
 if __name__ == '__main__':
     if int(platform.python_version_tuple()[0]) < 3 or int(platform.python_version_tuple()[1]) < 6:
         raise Exception("Python 3.6 or more is required.")
@@ -167,5 +216,8 @@ if __name__ == '__main__':
     for json_file in OPTS.get_src_files():
         word_info = WordInfoContainer(json_file)
         word_dict = ChosenDict(word_info.word_list, word_info.reading_list, \
-            word_info.word_class, word_info.explanation)
-        word_dict.print_dict()
+            word_info.japanese_reading_list, word_info.word_class, word_info.explanation)
+        if OPTS.is_without_ja():
+            word_dict.print_dict_without_ja()
+        else:
+            word_dict.print_dict()
