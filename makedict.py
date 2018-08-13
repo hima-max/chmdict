@@ -46,7 +46,6 @@ class MSDictMaker(DictMaker):
     def print_dict(self):
         """ 辞書文字列の出力
         """
-        sys.stdout.buffer.write(b'\xFF\xFE') # UTF-16 Little Endian を示すBOM(Byte Order Mark)を付与
         reading_list = self.reading_list + self.japanese_reading_list
         self.__print_reading_list(reading_list)
 
@@ -213,6 +212,8 @@ if __name__ == '__main__':
         raise Exception("Python 3.6 or more is required.")
     OPTS = OptHandler()
     ChosenDict = {"mozc":MozcDictMaker, "ms":MSDictMaker}[OPTS.get_engine_type()]
+    if OPTS.get_engine_type() == "ms":
+        sys.stdout.buffer.write(b'\xFF\xFE') # UTF-16 Little Endian を示すBOM(Byte Order Mark)を付与
     for json_file in OPTS.get_src_files():
         word_info = WordInfoContainer(json_file)
         word_dict = ChosenDict(word_info.word_list, word_info.reading_list, \
