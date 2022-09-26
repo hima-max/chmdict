@@ -2,28 +2,32 @@
 中国麻雀役の辞書とPython製辞書作成スクリプト
 
 ## Requirement
- 
-* GNU Make
-* Python 3.6以上
+
+* Python 3.6以上が動作するコマンドライン環境
 
 ## Usage
 
-* make all  
-辞書の生成
-* make all OPT=--without-japanese
-* make all OPT=-wj  
-日本語の読み方がない辞書の生成
-* make clean  
-辞書の削除
+以下のコマンドにより`output.txt`という辞書データが得られる
+```
+python ./makedict.py [オプション] [辞書データ] > output.txt
+```
+
+* --mozc, -g
+Mozc、Google日本語入力向けの辞書を出力（-ms, -mとは排他）
+* --ms, -m
+Microsoft IME向けの辞書を出力（--mozc, -gとは排他）
+* --without-japanese, -s
+日本語の読み方がない辞書を出力
+
+例として日本語読みを含まないMozc用の辞書は以下のコマンドで得られる
+```
+python ./makedict.py -g -s src/*.json > mozc.txt
+```
+
 
 ## Components
 
-* src  
-単語と読み方の対応付けが記述されたJSONファイルを含むディレクトリ
-* products  
-生成された辞書ファイルが置かれるディレクトリ  
-mozc.txtはGoogle日本語入力、msime.txtはMicrosoft IME向け
-* makedict.py  
+* src
+単語と読み方の対応付けが記述されたJSONファイルからなる辞書データ
+* makedict.py
 辞書作成スクリプト本体
-* makefile  
-ビルドルール

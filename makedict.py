@@ -146,7 +146,7 @@ class WordInfoContainer:
                 raise Exception(f"The value of \"explanation\" must be string in {json_file_path}")
         except KeyError as excpt:
             print(f"No \"{excpt.args[0]}\" key in {json_file_path}", file=sys.stderr)
-            if excpt.args[0] == "explanation": # explanationは無くてもよいが、それ以外のケースは許可しない
+            if excpt.args[0] == "explanation": # explanationは無くてもよいが、それ以外のkeyは必須
                 self.explanation = None
             else:
                 print(f"Lacking \"{excpt.args[0]}\" key is not allowed", file=sys.stderr)
@@ -177,10 +177,10 @@ reading, japanese_readingに複数の読み方を指定できます（例：「�
             nargs='+', type=str, default=None, help='入力するJSONファイル')
         optengine = optparser.add_mutually_exclusive_group() # optengineに登録したオプションは相互排他になる
         optengine.add_argument('--mozc', '-g', action='store_true', \
-            help='Google日本語入力向けの辞書を出力（IMEの指定は必須、他のIME指定とは排他）')
+            help='Mozc、Google日本語入力向けの辞書を出力（IMEの指定は必須、他のIME指定とは排他）')
         optengine.add_argument('--ms', '-m', action='store_true', \
             help='Microsoft IME向けの辞書を出力（IMEの指定は必須、他のIME指定とは排他）')
-        optparser.add_argument('--without-japanese', '-wj', action='store_true', \
+        optparser.add_argument('--without-japanese', '-s', action='store_true', \
             help='日本語の読み方がない辞書を出力')
         self.opts = optparser.parse_args()
         if self.opts.mozc is not True and self.opts.ms is not True:

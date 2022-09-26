@@ -30,8 +30,10 @@ jobs:
           DATETIME=$(date '+%Y%m%d_%H%M%S')
           echo "DATETIME=${DATETIME}" >> $GITHUB_ENV
           python ./makedict.py -g src/*.json > mozc.txt
+          python ./makedict.py -g -s src/*.json > mozc_no_japanese.txt
           python ./makedict.py -m src/*.json > msime.txt
-          zip chmdict${DATETIME}.zip mozc.txt msime.txt
+          python ./makedict.py -m -s src/*.json > msime_no_japanese.txt
+          zip chmdict${DATETIME}.zip mozc.txt mozc_no_japanese.txt msime.txt msime_no_japanese.txt
 
       - name: リリースを作成
         id: create_release
