@@ -12,20 +12,7 @@ jobs:
       - name: リポジトリを取得
         uses: actions/checkout@v3
 
-      - name: 辞書に影響のあるファイルのみを検知
-        id: product-related-files
-        uses: tj-actions/changed-files@v31
-        with:
-          files: |
-            src/**
-            makedict.py
-
-      - name: 辞書に影響のあるファイルの変更がないなら何もしない
-        if: steps.product-related-files.outputs.any_changed == 'false'
-        run: exit 1
-
-      - name: 辞書に影響のあるファイルが変更されたら辞書生成してアーカイブ
-        if: steps.product-related-files.outputs.any_changed == 'true'
+      - name: 辞書生成してアーカイブ
         run: |
           DATETIME=$(date '+%Y%m%d_%H%M%S')
           echo "DATETIME=${DATETIME}" >> $GITHUB_ENV
