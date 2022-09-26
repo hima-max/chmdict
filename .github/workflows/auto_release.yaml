@@ -1,0 +1,63 @@
+name: 自動リリース用ワークフロー
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: リポジトリを取得
+        uses: actions/checkout@v3
+
+      - name: 辞書に影響のあるファイルのみを検知
+        id: product-related-files
+        uses: tj-actions/changed-files@v31
+        with:
+          files: |
+            src/**
+            makedict.py
+
+      - name: 辞書に影響のあるファイルの変更がないなら何もしない
+        if: steps.product-related-files.outputs.any_changed == 'false'
+        run: exit 1
+
+      - name: 辞書に影響のあるファイルが変更されたら辞書生成してアーカイブ
+        if: steps.product-related-files.outputs.any_changed == 'true'
+        run: |
+          DATETIME=$(date '+%Y%m%d_%H%M%S')
+          echo "DATETIME=${DATETIME}" >> $GITHUB_ENV
+          python ./makedict.py -g src/*.json > mozc.txt
+          python ./makedict.py -m src/*.json > msime.txt
+          zip chmdict${DATETIME}.zip mozc.txt msime.txt
+
+      - name: リリースを作成
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.DATETIME }}
+          release_name: ${{ env.DATETIME }}
+          draft: false
+          prerelease: false
+
+      - name: リリースアセットをアップロード
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./chmdict${{ env.DATETIME }}.zip
+          asset_name: chmdict${{ env.DATETIME }}.zip
+          asset_content_type: application/zip
+
+      - name: 最新のリリース1つ以外の古いリリースを削除
+        uses: dev-drprasad/delete-older-releases@v0.2.0
+        with:
+          keep_latest: 1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
