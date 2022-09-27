@@ -30,6 +30,7 @@ jobs:
         with:
           tag_name: ${{ env.DATETIME }}
           release_name: ${{ env.DATETIME }}
+          body: "生成された辞書はchmdict${{ env.DATETIME }}.zip"
           draft: false
           prerelease: false
 
